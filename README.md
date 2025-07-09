@@ -236,12 +236,24 @@ mvn clean package -DskipTests
 # Build Docker image
 docker build -t user-registration-service .
 
-# Run container
-docker run -d \
-  --name user-registration-app \
+# Create network
+docker network create app-network
+
+# Run MySQL
+docker run -d --name mysql \
+  --network app-network \
+  -e MYSQL_ROOT_PASSWORD=root123 \
+  -e MYSQL_DATABASE=user_registration_dev \
+  -p 3306:3306 \
+  mysql:8.0
+
+# Run your app
+docker run -d --name user-app \
+  --network app-network \
   -p 8080:8080 \
   -e SPRING_PROFILES_ACTIVE=dev \
-  user-registration-service
+  -e SPRING_DATASOURCE_URL=jdbc:mysql://mysql:3306/user_registration_dev \
+  user-registration-service:latest
 ```
 
 ## Testing
