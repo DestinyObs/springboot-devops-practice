@@ -23,6 +23,7 @@ services:
       timeout: 10s
       retries: 5
       start_period: 30s
+    restart: unless-stopped
 
   # Spring Boot Application
   app:
