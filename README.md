@@ -206,6 +206,33 @@ src/
 | `JWT_SECRET` | JWT secret key | Auto-generated |
 | `JWT_EXPIRATION` | JWT expiration time (ms) | `86400000` (24 hours) |
 
+### CORS Configuration
+
+The application supports flexible CORS configuration through environment variables:
+
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `CORS_ALLOWED_ORIGINS` | Comma-separated list of allowed origins | `http://localhost:8080,http://127.0.0.1:8080,http://localhost:3000` |
+| `CORS_ALLOWED_PATTERNS` | Comma-separated list of origin patterns | `http://*:8080,https://*:8080` |
+| `CORS_ALLOW_CREDENTIALS` | Allow credentials in CORS requests | `true` |
+| `SWAGGER_SERVERS` | Comma-separated list of Swagger server URLs | `http://localhost:8080` |
+
+**Examples:**
+```bash
+# For development with any localhost port
+export CORS_ALLOWED_ORIGINS="*"
+export CORS_ALLOWED_PATTERNS="http://localhost:*,https://localhost:*"
+
+# For production with specific domains
+export CORS_ALLOWED_ORIGINS="https://yourdomain.com,https://app.yourdomain.com"
+
+# For cloud deployment with public IP
+export CORS_ALLOWED_ORIGINS="http://your-public-ip:8080"
+export SWAGGER_SERVERS="http://your-public-ip:8080,http://localhost:8080"
+```
+
+For detailed CORS configuration guide, see [CORS_CONFIGURATION.md](CORS_CONFIGURATION.md).
+
 ### Application Profiles
 
 - **dev**: Development environment with detailed logging
