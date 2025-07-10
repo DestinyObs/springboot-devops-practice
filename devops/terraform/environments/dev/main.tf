@@ -16,9 +16,9 @@ terraform {
   backend "s3" {
     bucket = "all-destinyobs-infra-terraform-states-xyz"
     key    = "dev/user-registration-microservice/terraform.tfstate"
-    region = "us-east-2"
-    dynamodb_table = "terraform-locks"
-    encrypt = true
+    region         = "us-east-2"
+    encrypt        = true
+    use_lockfile   = true
   }
 }
 
