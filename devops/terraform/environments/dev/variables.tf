@@ -86,3 +86,10 @@ variable "enable_alb" {
   type        = bool
   default     = false  # Disabled by default for dev
 }
+
+# WAF Configuration
+variable "enable_waf" {
+  description = "Enable WAF for ALB"
+  type        = bool
+  default     = false  # Disabled for dev environment
+}

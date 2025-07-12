@@ -1,0 +1,38 @@
+---
+- hosts: all
+  become: yes
+  gather_facts: yes
+  vars:
+    java_version: "17"
+    docker_compose_version: "2.24.0"
+    maven_version: "3.9.6"
+    
+  roles:
+    - common
+    - java
+    - docker
+    - maven
+    - app-setup
+
+  post_tasks:
+    - name: Display completion message
+      debug:
+        msg: |
+          Server Configuration Complete!
+          Server: {{ inventory_hostname }}
+          Environment: {{ environment }}
+          
+          Tools installed: Java {{ java_version }}, Maven {{ maven_version }}, Docker, Git
+          Server ready for CI/CD setup.
+          
+          Installed Components:
+          ✅ Java {{ java_version }}
+          ✅ Maven {{ maven_version }}
+          ✅ Docker & Docker Compose
+          ✅ Application setup ready
+          
+          Next Steps:
+          1. Deploy application with CI/CD pipeline
+          2. Access app at: http://{{ ansible_host }}:8080
+          
+          ========================================

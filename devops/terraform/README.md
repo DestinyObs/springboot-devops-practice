@@ -46,7 +46,7 @@ terraform/
 └── USAGE_GUIDE.md        # Detailed documentation
 ```
 
-## 🚀 Fully Automated Deployment
+## Fully Automated Deployment
 
 **Zero Manual Setup Required!** 
 
@@ -94,14 +94,14 @@ cd terraform
 - **Access**: SSH keys, IAM roles, principle of least privilege
 - **Monitoring**: CloudWatch logs, Performance Insights, alarms
 
-## 🔧 Prerequisites
+## Prerequisites
 
 1. **Terraform** >= 1.0.0
 2. **AWS CLI** configured with credentials
 3. **Bash** (Linux/Mac) - Since you're on Ubuntu
 4. **jq** (for JSON parsing in scripts)
 
-## 🛠️ Available Commands
+## Available Commands
 
 ```bash
 # Infrastructure management
@@ -127,4 +127,4 @@ cd terraform
 4. **Test the infrastructure** before moving to test/prod
 5. **Set up CI/CD pipelines** once dev is working
 
-This infrastructure provides a production-ready foundation for your microservice following enterprise DevOps standards! 🎯
+This infrastructure provides a production-ready foundation for your microservice following enterprise DevOps standards!

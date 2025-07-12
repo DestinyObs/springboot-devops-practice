@@ -1,0 +1,67 @@
+---
+# Maven installation and configuration
+
+- name: Download Maven
+  get_url:
+    url: "https://archive.apache.org/dist/maven/maven-3/{{ maven_version }}/binaries/apache-maven-{{ maven_version }}-bin.tar.gz"
+    dest: "/tmp/apache-maven-{{ maven_version }}-bin.tar.gz"
+    mode: '0644'
+
+- name: Create Maven directory
+  file:
+    path: /opt/maven
+    state: directory
+    owner: root
+    group: root
+    mode: '0755'
+
+- name: Extract Maven
+  unarchive:
+    src: "/tmp/apache-maven-{{ maven_version }}-bin.tar.gz"
+    dest: /opt/maven
+    remote_src: yes
+    owner: root
+    group: root
+    creates: "/opt/maven/apache-maven-{{ maven_version }}"
+
+- name: Create Maven symlink
+  file:
+    src: "/opt/maven/apache-maven-{{ maven_version }}"
+    dest: /opt/maven/current
+    state: link
+
+- name: Set Maven environment variables
+  lineinfile:
+    path: /etc/environment
+    regexp: "{{ item.regexp }}"
+    line: "{{ item.line }}"
+    create: yes
+  loop:
+    - { regexp: '^M2_HOME=', line: 'M2_HOME=/opt/maven/current' }
+    - { regexp: '^MAVEN_HOME=', line: 'MAVEN_HOME=/opt/maven/current' }
+
+- name: Add Maven to PATH in .bashrc
+  lineinfile:
+    path: /etc/bash.bashrc
+    line: 'export PATH=$PATH:/opt/maven/current/bin'
+    create: yes
+
+- name: Create Maven binary symlink
+  file:
+    src: /opt/maven/current/bin/mvn
+    dest: /usr/local/bin/mvn
+    state: link
+
+- name: Clean up Maven download
+  file:
+    path: "/tmp/apache-maven-{{ maven_version }}-bin.tar.gz"
+    state: absent
+
+- name: Verify Maven installation
+  command: /opt/maven/current/bin/mvn -version
+  register: maven_version_output
+  changed_when: false
+
+- name: Display Maven version
+  debug:
+    msg: "Maven installed successfully: {{ maven_version_output.stdout_lines[0] }}"

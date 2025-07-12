@@ -2,7 +2,7 @@
 
 This directory contains all DevOps-related infrastructure and automation for the **User Registration Microservice** project. Following industry best practices with clear separation of concerns.
 
-## 🎯 Project Architecture Overview
+## Project Architecture Overview
 
 ```
 ┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
@@ -42,7 +42,7 @@ devops/
     └── docker/             # Docker configurations
 ```
 
-## 🔧 Tool Responsibilities
+## Tool Responsibilities
 
 ### **Terraform (Infrastructure Only)**
 - ✅ AWS EC2 instances (Ubuntu 22.04 LTS)
@@ -50,13 +50,14 @@ devops/
 - ✅ Security groups for ALB and EC2
 - ✅ SSH key pairs (auto-generated)
 - ✅ Application Load Balancer (test/prod)
+- ✅ **Automatically triggers Ansible** after provisioning
 
-### **Ansible (Configuration - Future Phase)**
-- 🔄 Java and Maven installation
-- 🔄 Docker and Docker Compose setup
-- 🔄 Application deployment
-- 🔄 MySQL container configuration
-- 🔄 System hardening and monitoring
+### **Ansible (Configuration - Auto-Executed by Terraform)**
+- ✅ Java and Maven installation
+- ✅ Docker and Docker Compose setup
+- ✅ System updates and security hardening
+- ✅ Application user and directory setup
+- ✅ Service configuration and logging
 
 ### **CI/CD (Pipeline - Future Phase)**
 - 🔄 Jenkins pipeline setup
@@ -65,7 +66,7 @@ devops/
 - 🔄 Automated testing
 - 🔄 Multi-environment deployment
 
-## 🚀 Getting Started
+## Getting Started
 
 ### Prerequisites
 - AWS CLI configured with appropriate permissions
@@ -127,7 +128,7 @@ ssh -i user-registration-dev-key.pem ubuntu@<instance-ip>
 ## 📋 Next Steps
 
 1. **✅ Phase 1**: Infrastructure provisioning (Terraform) - **COMPLETED**
-2. **🔄 Phase 2**: Server configuration (Ansible) - **PENDING**
+2. **✅ Phase 2**: Server configuration (Ansible) - **AUTO-INTEGRATED**
 3. **🔄 Phase 3**: CI/CD pipeline setup (Jenkins) - **PENDING**
 4. **🔄 Phase 4**: Monitoring & alerting (Prometheus/Grafana) - **PENDING**
 
@@ -142,4 +143,4 @@ This infrastructure strictly follows the project outline:
 
 ---
 
-Ready to deploy your infrastructure? Start with the development environment and work your way up! 🚀
+Ready to deploy your infrastructure? Start with the development environment and work your way up!

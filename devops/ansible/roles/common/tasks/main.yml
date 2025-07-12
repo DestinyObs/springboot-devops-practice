@@ -1,0 +1,62 @@
+---
+# Common system setup tasks
+
+- name: Update apt package cache
+  apt:
+    update_cache: yes
+    cache_valid_time: 3600
+
+- name: Install essential packages
+  apt:
+    name:
+      - curl
+      - wget
+      - unzip
+      - git
+      - htop
+      - tree
+      - vim
+      - net-tools
+      - software-properties-common
+      - apt-transport-https
+      - ca-certificates
+      - gnupg
+      - lsb-release
+    state: present
+
+- name: Create application user
+  user:
+    name: appuser
+    shell: /bin/bash
+    home: /home/appuser
+    create_home: yes
+    groups: sudo
+    append: yes
+
+- name: Create application directories
+  file:
+    path: "{{ item }}"
+    state: directory
+    owner: appuser
+    group: appuser
+    mode: '0755'
+  loop:
+    - /opt/app
+    - /opt/app/logs
+    - /opt/app/config
+
+- name: Set timezone
+  timezone:
+    name: UTC
+
+- name: Configure system limits
+  pam_limits:
+    domain: "{{ item.domain }}"
+    limit_type: "{{ item.type }}"
+    limit_item: "{{ item.item }}"
+    value: "{{ item.value }}"
+  loop:
+    - { domain: '*', type: 'soft', item: 'nofile', value: '65536' }
+    - { domain: '*', type: 'hard', item: 'nofile', value: '65536' }
+    - { domain: '*', type: 'soft', item: 'nproc', value: '4096' }
+    - { domain: '*', type: 'hard', item: 'nproc', value: '4096' }

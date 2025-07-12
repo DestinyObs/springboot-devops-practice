@@ -1,0 +1,30 @@
+---
+# Java installation and configuration
+
+- name: Install OpenJDK {{ java_version }}
+  apt:
+    name: "openjdk-{{ java_version }}-jdk"
+    state: present
+    update_cache: yes
+
+- name: Set JAVA_HOME environment variable
+  lineinfile:
+    path: /etc/environment
+    regexp: '^JAVA_HOME='
+    line: 'JAVA_HOME=/usr/lib/jvm/java-{{ java_version }}-openjdk-amd64'
+    create: yes
+
+- name: Add JAVA_HOME to .bashrc for all users
+  lineinfile:
+    path: /etc/bash.bashrc
+    line: 'export JAVA_HOME=/usr/lib/jvm/java-{{ java_version }}-openjdk-amd64'
+    create: yes
+
+- name: Verify Java installation
+  command: java -version
+  register: java_version_output
+  changed_when: false
+
+- name: Display Java version
+  debug:
+    msg: "Java installed successfully: {{ java_version_output.stderr_lines[0] }}"
