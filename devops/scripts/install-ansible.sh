@@ -5,7 +5,6 @@
 echo "Checking if Ansible is installed..."
 
 if ! command -v ansible &> /dev/null; then
-    echo "Ansible not found. Installing now..."
     sudo apt update
     sudo apt install -y ansible
     echo "Ansible installed successfully."
@@ -14,4 +13,4 @@ else
     ansible --version
 fi
 
-echo "Ansible is set up and you're ready to run Terraform."
+echo "Ansible installed"

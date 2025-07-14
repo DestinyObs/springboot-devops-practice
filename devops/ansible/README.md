@@ -90,7 +90,7 @@ After Ansible completes, you can verify the installation:
 
 ```bash
 # SSH to your instance
-ssh -i user-registration-dev-key.pem ubuntu@<instance-ip>
+ssh -i user-registration-{environment}-key.pem ubuntu@<instance-ip>
 
 # Check installed versions
 java -version

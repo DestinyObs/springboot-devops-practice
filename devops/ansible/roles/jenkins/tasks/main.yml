@@ -1,0 +1,52 @@
+---
+# Jenkins installation and configuration
+
+- name: Add Jenkins GPG key
+  apt_key:
+    url: https://pkg.jenkins.io/debian-stable/jenkins.io-2023.key
+    state: present
+
+- name: Add Jenkins repository
+  apt_repository:
+    repo: "deb https://pkg.jenkins.io/debian-stable binary/"
+    state: present
+
+- name: Install Jenkins
+  apt:
+    name: jenkins
+    state: present
+    update_cache: yes
+
+- name: Start and enable Jenkins service
+  systemd:
+    name: jenkins
+    state: started
+    enabled: yes
+
+- name: Add jenkins user to docker group
+  user:
+    name: jenkins
+    groups: docker
+    append: yes
+
+- name: Wait for Jenkins to start
+  wait_for:
+    port: 8080
+    host: localhost
+    delay: 30
+    timeout: 300
+
+- name: Get Jenkins initial admin password
+  command: cat /var/lib/jenkins/secrets/initialAdminPassword
+  register: jenkins_initial_password
+  changed_when: false
+
+- name: Display Jenkins access information
+  debug:
+    msg: |
+      Jenkins installed successfully!
+      
+      Access Jenkins at: http://{{ ansible_default_ipv4.address }}:8080
+      Initial admin password: {{ jenkins_initial_password.stdout }}
+      
+      Jenkins user has been added to docker group for container builds.
