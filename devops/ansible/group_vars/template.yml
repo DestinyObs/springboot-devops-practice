@@ -1,0 +1,16 @@
+---
+environment: ${environment}
+project_name: ${project_name}
+instance_type: ${instance_type}
+aws_region: ${aws_region}
+
+instance_count: ${instance_count}
+instance_ips:
+%{ for ip in instance_ips ~}
+  - ${ip}
+%{ endfor ~}
+
+enable_alb: ${enable_alb}
+%{ if enable_alb && alb_dns_name != "" ~}
+alb_dns_name: ${alb_dns_name}
+%{ endif ~}

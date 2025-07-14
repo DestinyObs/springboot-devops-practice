@@ -1,4 +1,4 @@
-# Development Environment Configuration
+# Production Environment Configuration
 
 terraform {
   required_version = ">= 1.0"
@@ -23,7 +23,7 @@ terraform {
 
   backend "s3" {
     bucket = "all-destinyobs-infra-terraform-states-xyz"
-    key    = "dev/user-registration-microservice/terraform.tfstate"
+    key    = "prod/user-registration-microservice/terraform.tfstate"
     region         = "us-east-2"
     encrypt        = true
     use_lockfile   = true
@@ -39,6 +39,7 @@ provider "aws" {
       Project       = var.project_name
       ManagedBy     = "Terraform"
       Owner         = var.owner
+      CostCenter    = var.cost_center
     }
   }
 }
@@ -57,7 +58,7 @@ module "vpc" {
   vpc_cidr           = var.vpc_cidr
   public_subnets     = var.public_subnets
   private_subnets    = var.private_subnets
-  availability_zones = slice(data.aws_availability_zones.available.names, 0, 2)
+  availability_zones = data.aws_availability_zones.available.names
   enable_nat_gateway = var.enable_nat_gateway
 }
 
@@ -65,34 +66,29 @@ module "vpc" {
 module "security" {
   source = "../../modules/security"
 
-  project_name         = var.project_name
-  environment          = var.environment
-  vpc_id               = module.vpc.vpc_id
-  ssh_allowed_cidrs    = var.ssh_allowed_cidrs
+  project_name      = var.project_name
+  environment       = var.environment
+  vpc_id            = module.vpc.vpc_id
+  ssh_allowed_cidrs = var.ssh_allowed_cidrs
 }
 
-# EC2 Module
+# EC2 Module (with Auto Scaling)
 module "ec2" {
   source = "../../modules/ec2"
 
-  name_prefix        = "${var.project_name}-${var.environment}"
-  instance_count     = var.instance_count
-  instance_type      = var.instance_type
-  key_name           = var.create_key_pair ? aws_key_pair.main[0].key_name : var.key_pair_name
-  security_group_ids = [module.security.app_security_group_id]
-  subnet_ids         = module.vpc.public_subnet_ids
-  enable_eip         = false  # Set to false for dev
-  target_group_arn   = var.enable_alb ? module.alb[0].target_group_arn : null
-
-  common_tags = {
-    Environment = var.environment
-    Project     = var.project_name
-  }
+  name_prefix         = "${var.project_name}-${var.environment}"
+  instance_count      = var.instance_count
+  instance_type       = var.instance_type
+  key_name            = aws_key_pair.main.key_name
+  security_group_ids  = [module.security.app_security_group_id]
+  subnet_ids          = var.use_private_subnets ? module.vpc.private_subnet_ids : module.vpc.public_subnet_ids
+  target_group_arn    = module.alb.target_group_arn
+  enable_eip          = var.enable_eip
+  volume_size         = var.volume_size
 }
 
-# ALB Module
+# ALB Module (mandatory for prod)
 module "alb" {
-  count  = var.enable_alb ? 1 : 0
   source = "../../modules/alb"
 
   name_prefix        = "${var.project_name}-${var.environment}"
@@ -103,7 +99,7 @@ module "alb" {
   target_port                     = 8080
   listener_port                   = 80
   health_check_path               = "/actuator/health"
-  enable_deletion_protection      = false
+  enable_deletion_protection      = true
 
   common_tags = {
     Environment = var.environment
@@ -113,54 +109,34 @@ module "alb" {
 
 # Generate TLS private key for SSH
 resource "tls_private_key" "main" {
-  count     = var.create_key_pair ? 1 : 0
   algorithm = "RSA"
   rsa_bits  = 4096
 }
 
+# Create AWS key pair
+resource "aws_key_pair" "main" {
+  key_name   = var.key_pair_name
+  public_key = tls_private_key.main.public_key_openssh
+}
+
 # Save private key to file with proper permissions
 resource "local_file" "private_key" {
-  count           = var.create_key_pair ? 1 : 0
-  content         = tls_private_key.main[0].private_key_pem
+  content         = tls_private_key.main.private_key_pem
   filename        = "${var.key_pair_name}.pem"
   file_permission = "0600"
-  depends_on      = [tls_private_key.main]
 }
 
-# Isolated key permission fix
-resource "null_resource" "fix_key_permissions" {
-  count = var.create_key_pair ? 1 : 0
-
-  provisioner "local-exec" {
-    command     = "chmod 600 ${var.key_pair_name}.pem && ls -la ${var.key_pair_name}.pem"
-    interpreter = ["bash", "-c"]
-  }
-
-  triggers = {
-    key_file = "${var.key_pair_name}.pem"
-  }
-
-  depends_on = [local_file.private_key]
-}
-
-# Key Pair for EC2 instances
-resource "aws_key_pair" "main" {
-  count      = var.create_key_pair ? 1 : 0
-  key_name   = var.key_pair_name
-  public_key = tls_private_key.main[0].public_key_openssh
-
-  tags = {
-    Name        = var.key_pair_name
-    Environment = var.environment
-    Project     = var.project_name
-  }
+# Wait for instances to be ready
+resource "time_sleep" "wait_for_instances" {
+  depends_on      = [module.ec2]
+  create_duration = "90s"  # Longer wait for prod
 }
 
 # Generate Ansible inventory dynamically
 resource "local_file" "ansible_inventory" {
   content = templatefile("../../../ansible/inventory/template.ini", {
     environment  = var.environment
-    instance_ips = module.ec2.instance_public_ips
+    instance_ips = var.use_private_subnets ? module.ec2.instance_private_ips : module.ec2.instance_public_ips
   })
   filename = "../../../ansible/inventory/${var.environment}.ini"
   depends_on = [module.ec2]
@@ -174,9 +150,9 @@ resource "local_file" "ansible_vars" {
     instance_type  = var.instance_type
     aws_region     = var.aws_region
     instance_count = var.instance_count
-    instance_ips   = module.ec2.instance_public_ips
-    enable_alb     = var.enable_alb
-    alb_dns_name   = var.enable_alb ? module.alb[0].alb_dns_name : ""
+    instance_ips   = var.use_private_subnets ? module.ec2.instance_private_ips : module.ec2.instance_public_ips
+    enable_alb     = true
+    alb_dns_name   = module.alb.alb_dns_name
   })
   filename = "../../../ansible/group_vars/${var.environment}.yml"
   depends_on = [module.ec2]
@@ -187,20 +163,17 @@ resource "null_resource" "run_ansible" {
   depends_on = [
     module.ec2,
     local_file.ansible_inventory,
-    null_resource.fix_key_permissions
+    local_file.ansible_vars,
+    local_file.private_key
   ]
 
-  # Wait for SSH to be available
-  provisioner "remote-exec" {
-    inline = ["echo 'SSH is ready!'"]
-
-    connection {
-      type        = "ssh"
-      host        = module.ec2.instance_public_ips[0]
-      user        = "ubuntu"
-      private_key = var.create_key_pair ? tls_private_key.main[0].private_key_pem : file(var.key_pair_name)
-      timeout     = "10m"
-    }
+  # SSH connection test - use public IP for connection test even if instances are private
+  connection {
+    type        = "ssh"
+    host        = var.use_private_subnets ? module.ec2.instance_private_ips[0] : module.ec2.instance_public_ips[0]
+    user        = "ubuntu"
+    private_key = var.create_key_pair ? tls_private_key.main.private_key_pem : file(var.key_pair_name)
+    timeout     = "10m"
   }
 
   # Run Ansible playbook from local machine  
