@@ -23,7 +23,7 @@ services:
       start_period: 30s
     restart: unless-stopped
 
-  # Boot Application
+  # spring book Boot Application
   app:
     build: .
     container_name: user-registration-app
