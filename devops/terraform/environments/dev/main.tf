@@ -26,7 +26,7 @@ terraform {
     key    = "dev/user-registration-microservice/terraform.tfstate"
     region         = "us-east-2"
     encrypt        = true
-    use_lockfile   = true
+    use_lockfile   = false
   }
 }
 

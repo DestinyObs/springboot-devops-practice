@@ -77,7 +77,7 @@ variable "instance_type" {
 variable "instance_count" {
   description = "Number of EC2 instances"
   type        = number
-  default     = 3  # Multiple instances for prod availability
+  default     = 1  # Single instance for simpler prod setup
 }
 
 variable "enable_eip" {
@@ -97,6 +97,12 @@ variable "enable_alb" {
   description = "Whether to create Application Load Balancer"
   type        = bool
   default     = true  # Always enabled for prod
+}
+
+variable "enable_deletion_protection" {
+  description = "Whether to enable deletion protection on ALB (disable for dev/test)"
+  type        = bool
+  default     = false  # Changed default to false for easier management
 }
 
 # WAF Configuration  
@@ -143,6 +149,13 @@ variable "backup_retention_days" {
   description = "Number of days to retain backups"
   type        = number
   default     = 30
+}
+
+# S3 Configuration for deployments
+variable "s3_bucket_name" {
+  description = "S3 bucket name for storing deployment artifacts"
+  type        = string
+  default     = "springboot-devops-prod-deployments"
 }
 
 # Tags

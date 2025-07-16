@@ -24,6 +24,7 @@ resource "aws_instance" "app_server" {
   vpc_security_group_ids = var.security_group_ids
   subnet_id              = var.subnet_ids[count.index % length(var.subnet_ids)]
   associate_public_ip_address = true
+  iam_instance_profile   = var.iam_instance_profile
 
   root_block_device {
     volume_type = "gp3"

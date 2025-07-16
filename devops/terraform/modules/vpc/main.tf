@@ -21,6 +21,10 @@ resource "aws_internet_gateway" "main" {
     Environment = var.environment
     Project     = var.project_name
   }
+
+  lifecycle {
+    create_before_destroy = true
+  }
 }
 
 # Public Subnets
@@ -100,6 +104,8 @@ resource "aws_route_table" "public" {
     Environment = var.environment
     Project     = var.project_name
   }
+
+  depends_on = [aws_internet_gateway.main]
 }
 
 # Route Table for Private Subnets

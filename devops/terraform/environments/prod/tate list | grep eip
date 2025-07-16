@@ -1,0 +1,37 @@
+{
+    "Addresses": [
+        {
+            "AllocationId": "eipalloc-09ebbaf459902a467",
+            "Domain": "vpc",
+            "Tags": [
+                {
+                    "Key": "CostCenter",
+                    "Value": "Engineering"
+                },
+                {
+                    "Key": "Project",
+                    "Value": "user-registration-microservice"
+                },
+                {
+                    "Key": "Environment",
+                    "Value": "prod"
+                },
+                {
+                    "Key": "ManagedBy",
+                    "Value": "Terraform"
+                },
+                {
+                    "Key": "Owner",
+                    "Value": "DevOps Team"
+                },
+                {
+                    "Key": "Name",
+                    "Value": "user-registration-microservice-prod-nat-eip-3"
+                }
+            ],
+            "PublicIpv4Pool": "amazon",
+            "NetworkBorderGroup": "us-east-2",
+            "PublicIp": "3.12.170.228"
+        }
+    ]
+}

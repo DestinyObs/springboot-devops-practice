@@ -1,0 +1,118 @@
+pipeline {
+    agent any
+    
+    environment {
+        DOCKER_HUB_CREDENTIALS = credentials('docker-hub-credentials')
+        DOCKER_IMAGE = 'your-dockerhub-username/spring-boot-user-registration'
+        AWS_REGION = 'us-east-1'
+        ENV_NAME = 'test'
+    }
+    
+    tools {
+        maven 'Maven-3.9.6'
+        jdk 'OpenJDK-17'
+    }
+    
+    stages {
+        stage('Checkout') {
+            steps {
+                checkout scm
+                script {
+                    env.BUILD_NUMBER = BUILD_NUMBER
+                    env.GIT_COMMIT_SHORT = sh(
+                        script: 'git rev-parse --short HEAD',
+                        returnStdout: true
+                    ).trim()
+                }
+            }
+        }
+        
+        stage('Pull Latest Dev Image') {
+            steps {
+                script {
+                    sh """
+                        echo \$DOCKER_HUB_CREDENTIALS_PSW | docker login -u \$DOCKER_HUB_CREDENTIALS_USR --password-stdin
+                        docker pull ${DOCKER_IMAGE}:latest-dev
+                        docker tag ${DOCKER_IMAGE}:latest-dev ${DOCKER_IMAGE}:latest-test
+                    """
+                }
+            }
+        }
+        
+        stage('Integration Tests') {
+            steps {
+                sh 'mvn verify -Dspring.profiles.active=test'
+            }
+            post {
+                always {
+                    publishTestResults testResultsPattern: 'target/failsafe-reports/*.xml'
+                }
+            }
+        }
+        
+        stage('Security Scan') {
+            steps {
+                sh '''
+                    echo "Running security scan..."
+                    mvn org.owasp:dependency-check-maven:check
+                '''
+            }
+        }
+        
+        stage('Push Test Image') {
+            steps {
+                script {
+                    sh """
+                        docker push ${DOCKER_IMAGE}:latest-test
+                    """
+                }
+            }
+        }
+        
+        stage('Deploy to Test') {
+            steps {
+                script {
+                    sh """
+                        chmod +x devops/jenkins/scripts/deploy.sh
+                        ./devops/jenkins/scripts/deploy.sh ${ENV_NAME} ${DOCKER_IMAGE}:latest-test
+                    """
+                }
+            }
+        }
+        
+        stage('Test Environment Health Check') {
+            steps {
+                script {
+                    sh """
+                        chmod +x devops/jenkins/scripts/health-check.sh
+                        ./devops/jenkins/scripts/health-check.sh ${ENV_NAME}
+                    """
+                }
+            }
+        }
+        
+        stage('Approval for Production') {
+            steps {
+                script {
+                    timeout(time: 5, unit: 'MINUTES') {
+                        input message: 'Deploy to Production?', ok: 'Deploy',
+                              submitterParameter: 'APPROVED_BY'
+                    }
+                }
+            }
+        }
+    }
+    
+    post {
+        always {
+            cleanWs()
+        }
+        success {
+            echo 'Test deployment successful and approved for production!'
+            build job: 'spring-boot-user-registration-prod', wait: false
+        }
+        failure {
+            echo 'Test pipeline failed!'
+        }
+    }
+}

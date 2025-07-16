@@ -57,17 +57,17 @@ output "alb_security_group_id" {
   value       = module.security.alb_security_group_id
 }
 
-# SSH Connection (for private instances via bastion)
-output "ssh_connection_info" {
-  description = "SSH connection information"
-  value = var.use_private_subnets ? {
-    note = "Instances are in private subnets. SSH access requires bastion host or VPN."
-    private_ips = module.ec2.instance_private_ips
-  } : {
-    commands = [
-      for ip in module.ec2.instance_public_ips :
-      "ssh -i ${var.project_name}-${var.environment}-key.pem ubuntu@${ip}"
+# SSM Connection (for secure access to instances)
+output "ssm_connection_info" {
+  description = "SSM connection information for secure access"
+  value = {
+    note = "Use AWS Systems Manager Session Manager for secure access to instances"
+    instance_ids = module.ec2.instance_ids
+    ssm_commands = [
+      for id in module.ec2.instance_ids :
+      "aws ssm start-session --target ${id}"
     ]
+    deployment_guide = "See deployment-instructions-${var.environment}.md for manual deployment steps"
   }
 }
 
@@ -105,4 +105,21 @@ output "environment_info" {
     nat_gateway_enabled = var.enable_nat_gateway
     deletion_protection = true  # Hardcoded to true for production
   }
+}
+
+# SSM IAM Resources
+output "ssm_role_arn" {
+  description = "ARN of the SSM IAM role"
+  value       = aws_iam_role.ssm_role.arn
+}
+
+output "ssm_instance_profile_name" {
+  description = "Name of the SSM instance profile"
+  value       = aws_iam_instance_profile.ssm_profile.name
+}
+
+# Manual deployment command
+output "deployment_command" {
+  description = "Command to run Ansible on the instances"
+  value = "cd /home/ubuntu/ansible && ansible-playbook -i inventory/${var.environment}.ini playbooks/site.yml --connection=local"
 }
