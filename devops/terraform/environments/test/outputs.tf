@@ -47,12 +47,12 @@ output "private_key_filename" {
 # ALB Outputs (if enabled)
 output "load_balancer_dns_name" {
   description = "DNS name of the load balancer"
-  value       = var.enable_alb ? module.alb[0].alb_dns_name : null
+  value       = var.enable_alb ? module.alb[0].load_balancer_dns_name : null
 }
 
 output "load_balancer_zone_id" {
   description = "Zone ID of the load balancer"
-  value       = var.enable_alb ? module.alb[0].alb_zone_id : null
+  value       = var.enable_alb ? module.alb[0].load_balancer_zone_id : null
 }
 
 # Security Group Outputs
@@ -70,7 +70,7 @@ output "alb_security_group_id" {
 output "application_urls" {
   description = "URLs to access the application"
   value = var.enable_alb ? [
-    "http://${module.alb[0].alb_dns_name}:8080"
+    "http://${module.alb[0].load_balancer_dns_name}:8080"
   ] : [
     for ip in module.ec2.instance_public_ips :
     "http://${ip}:8080"

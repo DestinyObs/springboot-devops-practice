@@ -76,13 +76,12 @@ module "security" {
 module "ec2" {
   source = "../../modules/ec2"
 
-  name_prefix         = "${var.project_name}-${var.environment}"
+  name_prefix         = "user-reg-${var.environment}"
   instance_count      = var.instance_count
   instance_type       = var.instance_type
   key_name            = aws_key_pair.main.key_name
   security_group_ids  = [module.security.app_security_group_id]
   subnet_ids          = var.use_private_subnets ? module.vpc.private_subnet_ids : module.vpc.public_subnet_ids
-  target_group_arn    = module.alb.target_group_arn
   enable_eip          = var.enable_eip
   volume_size         = var.volume_size
 }
@@ -91,7 +90,7 @@ module "ec2" {
 module "alb" {
   source = "../../modules/alb"
 
-  name_prefix        = "${var.project_name}-${var.environment}"
+  name_prefix        = "user-reg-${var.environment}"
   vpc_id             = module.vpc.vpc_id
   subnet_ids         = module.vpc.public_subnet_ids
   security_group_ids = [module.security.alb_security_group_id]
@@ -105,6 +104,15 @@ module "alb" {
     Environment = var.environment
     Project     = var.project_name
   }
+}
+
+# Target group attachment for ALB (handled separately to avoid count issues)
+resource "aws_lb_target_group_attachment" "prod_attachment" {
+  count            = var.instance_count
+  target_group_arn = module.alb.target_group_arn
+  target_id        = module.ec2.instance_ids[count.index]
+  port             = 8080
+  depends_on       = [module.ec2, module.alb]
 }
 
 # Generate TLS private key for SSH
@@ -152,7 +160,7 @@ resource "local_file" "ansible_vars" {
     instance_count = var.instance_count
     instance_ips   = var.use_private_subnets ? module.ec2.instance_private_ips : module.ec2.instance_public_ips
     enable_alb     = true
-    alb_dns_name   = module.alb.alb_dns_name
+    alb_dns_name   = module.alb.load_balancer_dns_name
   })
   filename = "../../../ansible/group_vars/${var.environment}.yml"
   depends_on = [module.ec2]

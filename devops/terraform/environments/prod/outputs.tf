@@ -33,12 +33,12 @@ output "instance_ids" {
 # ALB Outputs
 output "load_balancer_dns_name" {
   description = "DNS name of the load balancer"
-  value       = module.alb.alb_dns_name
+  value       = module.alb.load_balancer_dns_name
 }
 
 output "load_balancer_zone_id" {
   description = "Zone ID of the load balancer"
-  value       = module.alb.alb_zone_id
+  value       = module.alb.load_balancer_zone_id
 }
 
 output "target_group_arn" {
@@ -79,12 +79,12 @@ output "private_key_filename" {
 # Application Access
 output "application_url" {
   description = "Primary URL to access the application"
-  value       = "https://${module.alb.alb_dns_name}"
+  value       = "https://${module.alb.load_balancer_dns_name}"
 }
 
 output "application_health_check_url" {
   description = "Health check URL"
-  value       = "https://${module.alb.alb_dns_name}/health"
+  value       = "https://${module.alb.load_balancer_dns_name}/health"
 }
 
 # Production Monitoring

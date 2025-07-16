@@ -44,12 +44,6 @@ variable "enable_eip" {
   default     = false
 }
 
-variable "target_group_arn" {
-  description = "ARN of the target group for ALB attachment"
-  type        = string
-  default     = null
-}
-
 variable "app_port" {
   description = "Port on which the application runs"
   type        = number

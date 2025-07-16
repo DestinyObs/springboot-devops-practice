@@ -48,10 +48,4 @@ resource "aws_eip" "app_eip" {
   })
 }
 
-# Target group attachment for ALB
-resource "aws_lb_target_group_attachment" "app_attachment" {
-  count            = var.target_group_arn != null ? var.instance_count : 0
-  target_group_arn = var.target_group_arn
-  target_id        = aws_instance.app_server[count.index].id
-  port             = var.app_port
-}
+
