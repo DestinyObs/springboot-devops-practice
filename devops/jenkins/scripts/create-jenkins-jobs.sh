@@ -12,6 +12,17 @@ JENKINS_URL="http://13.59.191.101:8080"
 JENKINS_USER="admin"
 JENKINS_PASSWORD="859ce99d4dcb4f9d8ca5834422e9903a"
 
+# Get Jenkins crumb for CSRF protection
+get_jenkins_crumb() {
+    CRUMB=$(curl -s "$JENKINS_URL/crumbIssuer/api/xml?xpath=concat(//crumbRequestField,\":\",//crumb)" \
+        --user "$JENKINS_USER:$JENKINS_PASSWORD")
+    echo "$CRUMB"
+}
+
+echo "Getting Jenkins CSRF token..."
+JENKINS_CRUMB=$(get_jenkins_crumb)
+echo "CSRF token obtained: ${JENKINS_CRUMB:0:20}..."
+
 # Function to create Jenkins job
 create_jenkins_job() {
     local JOB_NAME=$1
@@ -19,12 +30,32 @@ create_jenkins_job() {
     
     echo "Creating Jenkins job: $JOB_NAME"
     
-    curl -X POST "$JENKINS_URL/createItem?name=$JOB_NAME" \
-        --user "$JENKINS_USER:$JENKINS_PASSWORD" \
-        --header "Content-Type: application/xml" \
-        --data-binary @"$JOB_CONFIG"
-    
-    echo "Job $JOB_NAME created successfully"
+    # Check if job already exists
+    if curl -f "$JENKINS_URL/job/$JOB_NAME/api/json" --user "$JENKINS_USER:$JENKINS_PASSWORD" --silent > /dev/null 2>&1; then
+        echo "Job $JOB_NAME already exists, updating configuration..."
+        curl -X POST "$JENKINS_URL/job/$JOB_NAME/config.xml" \
+            --user "$JENKINS_USER:$JENKINS_PASSWORD" \
+            --header "$JENKINS_CRUMB" \
+            --header "Content-Type: application/xml" \
+            --data-binary @"$JOB_CONFIG" \
+            --silent
+        echo "Job $JOB_NAME updated successfully ✓"
+    else
+        echo "Creating new job $JOB_NAME..."
+        RESPONSE=$(curl -X POST "$JENKINS_URL/createItem?name=$JOB_NAME" \
+            --user "$JENKINS_USER:$JENKINS_PASSWORD" \
+            --header "$JENKINS_CRUMB" \
+            --header "Content-Type: application/xml" \
+            --data-binary @"$JOB_CONFIG" \
+            2>&1)
+        
+        if [[ $? -eq 0 ]]; then
+            echo "Job $JOB_NAME created successfully ✓"
+        else
+            echo "Failed to create job $JOB_NAME"
+            echo "Response: $RESPONSE"
+        fi
+    fi
 }
 
 # Dev job configuration
