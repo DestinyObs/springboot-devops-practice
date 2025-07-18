@@ -5,12 +5,15 @@ pipeline {
         DOCKER_REGISTRY = 'destinyobs'
         IMAGE_NAME = 'user-registration-microservice'
         BUILD_NUMBER = "${env.BUILD_NUMBER}"
+        DOCKER_HUB_CREDENTIALS = credentials('docker-hub-credentials')
     }
     
     stages {
         stage('Checkout') {
             steps {
-                git branch: 'main', url: 'https://github.com/destinyobs/springboot-devops-practice.git'
+                git credentialsId: 'github-credentials', 
+                    branch: 'main', 
+                    url: 'https://github.com/destinyobs/springboot-devops-practice.git'
             }
         }
         
@@ -40,6 +43,7 @@ pipeline {
             steps {
                 script {
                     sh """
+                        echo \$DOCKER_HUB_CREDENTIALS_PSW | docker login -u \$DOCKER_HUB_CREDENTIALS_USR --password-stdin
                         docker build -t ${DOCKER_REGISTRY}/${IMAGE_NAME}:${BUILD_NUMBER} .
                         docker tag ${DOCKER_REGISTRY}/${IMAGE_NAME}:${BUILD_NUMBER} ${DOCKER_REGISTRY}/${IMAGE_NAME}:dev-latest
                         docker push ${DOCKER_REGISTRY}/${IMAGE_NAME}:${BUILD_NUMBER}
@@ -65,7 +69,7 @@ pipeline {
                 script {
                     retry(10) {
                         sleep 30
-                        sh 'curl -f http://localhost:8080/api/v1/health'
+                        sh 'curl -f http://localhost:8989/api/v1/health'
                     }
                 }
             }

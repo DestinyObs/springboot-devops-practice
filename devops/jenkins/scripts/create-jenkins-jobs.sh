@@ -8,9 +8,9 @@ set -e
 echo "Creating Jenkins jobs for Spring Boot User Registration Service..."
 
 # Jenkins connection details
-JENKINS_URL="http://localhost:8080"
+JENKINS_URL="http://13.59.191.101:8080"
 JENKINS_USER="admin"
-JENKINS_PASSWORD="admin123"
+JENKINS_PASSWORD="859ce99d4dcb4f9d8ca5834422e9903a"
 
 # Function to create Jenkins job
 create_jenkins_job() {
@@ -48,7 +48,7 @@ cat > job-dev.xml << 'EOF'
       <configVersion>2</configVersion>
       <userRemoteConfigs>
         <hudson.plugins.git.UserRemoteConfig>
-          <url>https://github.com/your-username/springboot-devops-practice.git</url>
+          <url>https://github.com/destinyobs/springboot-devops-practice.git</url>
         </hudson.plugins.git.UserRemoteConfig>
       </userRemoteConfigs>
       <branches>
@@ -81,7 +81,7 @@ cat > job-test.xml << 'EOF'
       <configVersion>2</configVersion>
       <userRemoteConfigs>
         <hudson.plugins.git.UserRemoteConfig>
-          <url>https://github.com/your-username/springboot-devops-practice.git</url>
+          <url>https://github.com/destinyobs/springboot-devops-practice.git</url>
         </hudson.plugins.git.UserRemoteConfig>
       </userRemoteConfigs>
       <branches>
@@ -114,7 +114,7 @@ cat > job-prod.xml << 'EOF'
       <configVersion>2</configVersion>
       <userRemoteConfigs>
         <hudson.plugins.git.UserRemoteConfig>
-          <url>https://github.com/your-username/springboot-devops-practice.git</url>
+          <url>https://github.com/destinyobs/springboot-devops-practice.git</url>
         </hudson.plugins.git.UserRemoteConfig>
       </userRemoteConfigs>
       <branches>
