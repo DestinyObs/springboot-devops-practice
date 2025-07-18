@@ -37,7 +37,7 @@ This document describes the complete infrastructure setup for the User Registrat
 
 ### Security Groups
 - **ALB Security Group**: HTTP/HTTPS from internet
-- **App Security Group**: Port 8080 from ALB, SSH from allowed CIDRs
+- **App Security Group**: Port 8989 from ALB, SSH from allowed CIDRs, Jenkins on port 8080
 
 ### Auto Scaling (Future Enhancement)
 Currently using fixed instance counts, ready for Auto Scaling Group integration.
@@ -99,7 +99,7 @@ terraform apply
 ## Monitoring and Maintenance
 
 ### Health Checks
-- ALB health checks on port 8080
+- ALB health checks on port 8989
 - Application health endpoint: `/health`
 
 ### Logging
@@ -131,7 +131,7 @@ Each environment provides:
 
 ### Common Issues
 - **SSH Connection**: Check security group rules and key permissions
-- **Application Access**: Verify security group port 8080 access
+- **Application Access**: Verify security group port 8989 access
 - **Ansible Failures**: Check inventory file generation and key paths
 
 ### Debug Commands
@@ -143,7 +143,10 @@ aws ec2 describe-instances --filters "Name=tag:Environment,Values=dev"
 ssh -i user-registration-microservice-dev-key.pem ubuntu@<instance-ip>
 
 # Check application health
-curl http://<instance-ip>:8080/health
+curl http://<instance-ip>:8989/health
+
+# Check Jenkins access  
+curl http://<instance-ip>:8080
 ```
 
 ## Security Considerations

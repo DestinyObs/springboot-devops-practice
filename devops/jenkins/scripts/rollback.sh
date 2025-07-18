@@ -119,7 +119,7 @@ services:
     networks:
       - app-network
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8080/actuator/health"]
+      test: ["CMD", "curl", "-f", "http://localhost:8989/actuator/health"]
       interval: 30s
       timeout: 10s
       retries: 5

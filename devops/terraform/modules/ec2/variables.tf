@@ -47,7 +47,7 @@ variable "enable_eip" {
 variable "app_port" {
   description = "Port on which the application runs"
   type        = number
-  default     = 8080
+  default     = 8989
 }
 
 variable "common_tags" {

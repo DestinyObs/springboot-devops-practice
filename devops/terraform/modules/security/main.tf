@@ -47,8 +47,8 @@ resource "aws_security_group" "app" {
   # Spring Boot Application
   ingress {
     description     = "HTTP from ALB"
-    from_port       = 8080
-    to_port         = 8080
+    from_port       = 8989
+    to_port         = 8989
     protocol        = "tcp"
     security_groups = [aws_security_group.alb.id]
   }
@@ -56,8 +56,8 @@ resource "aws_security_group" "app" {
   # Spring Boot Application - Direct access (for dev/test)
   ingress {
     description = "Spring Boot App Direct"
-    from_port   = 8080
-    to_port     = 8080
+    from_port   = 8989
+    to_port     = 8989
     protocol    = "tcp"
     cidr_blocks = ["0.0.0.0/0"]
   }
@@ -65,8 +65,8 @@ resource "aws_security_group" "app" {
   # Jenkins
   ingress {
     description = "Jenkins Web UI"
-    from_port   = 8081
-    to_port     = 8081
+    from_port   = 8080
+    to_port     = 8080
     protocol    = "tcp"
     cidr_blocks = ["0.0.0.0/0"]
   }

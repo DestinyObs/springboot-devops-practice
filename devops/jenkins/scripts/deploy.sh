@@ -31,7 +31,7 @@ echo "Waiting for application to start..."
 sleep 60
 
 # Verify deployment
-if curl -f http://localhost:8080/api/v1/health; then
+if curl -f http://localhost:8989/api/v1/health; then
     echo "Deployment successful!"
 else
     echo "Deployment failed - health check failed"
@@ -130,11 +130,11 @@ services:
       SPRING_DATASOURCE_USERNAME: appuser
       SPRING_DATASOURCE_PASSWORD: apppassword
     ports:
-      - "${APP_PORT}:8080"
+      - "${APP_PORT}:8989"
     networks:
       - app-network
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8080/actuator/health"]
+      test: ["CMD", "curl", "-f", "http://localhost:8989/actuator/health"]
       interval: 30s
       timeout: 10s
       retries: 5

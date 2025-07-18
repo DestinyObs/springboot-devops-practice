@@ -70,9 +70,9 @@ output "alb_security_group_id" {
 output "application_urls" {
   description = "URLs to access the application"
   value = var.enable_alb ? [
-    "http://${module.alb[0].load_balancer_dns_name}:8080"
+    "http://${module.alb[0].load_balancer_dns_name}:8989"
   ] : [
     for ip in module.ec2.instance_public_ips :
-    "http://${ip}:8080"
+    "http://${ip}:8989"
   ]
 }

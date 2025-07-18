@@ -103,7 +103,7 @@ module "alb" {
   subnet_ids         = module.vpc.public_subnet_ids
   security_group_ids = [module.security.alb_security_group_id]
   
-  target_port                     = 8080
+  target_port                     = 8989
   listener_port                   = 80
   health_check_path               = "/actuator/health"
   enable_deletion_protection      = var.enable_deletion_protection
@@ -119,7 +119,7 @@ resource "aws_lb_target_group_attachment" "prod_attachment" {
   count            = var.instance_count
   target_group_arn = module.alb.target_group_arn
   target_id        = module.ec2.instance_ids[count.index]
-  port             = 8080
+  port             = 8989
   depends_on       = [module.ec2, module.alb]
 }
 

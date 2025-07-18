@@ -91,11 +91,11 @@ services:
       SPRING_DATASOURCE_USERNAME: appuser
       SPRING_DATASOURCE_PASSWORD: apppassword
     ports:
-      - "8083:8080"
+      - "8983:8989"
     networks:
       - app-network
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8080/actuator/health"]
+      test: ["CMD", "curl", "-f", "http://localhost:8989/actuator/health"]
       interval: 30s
       timeout: 10s
       retries: 5
@@ -113,11 +113,11 @@ services:
       SPRING_DATASOURCE_USERNAME: appuser
       SPRING_DATASOURCE_PASSWORD: apppassword
     ports:
-      - "8084:8080"
+      - "8984:8989"
     networks:
       - app-network
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8080/actuator/health"]
+      test: ["CMD", "curl", "-f", "http://localhost:8989/actuator/health"]
       interval: 30s
       timeout: 10s
       retries: 5
@@ -145,7 +145,7 @@ ssh -i /tmp/blue_green_key.pem -o StrictHostKeyChecking=no ubuntu@$TARGET_HOST "
     # Wait for green environment to be healthy
     echo 'Waiting for green environment to be healthy...'
     for i in {1..30}; do
-        if curl -f http://localhost:8084/actuator/health > /dev/null 2>&1; then
+        if curl -f http://localhost:8984/actuator/health > /dev/null 2>&1; then
             echo 'Green environment is healthy!'
             break
         fi
@@ -154,7 +154,7 @@ ssh -i /tmp/blue_green_key.pem -o StrictHostKeyChecking=no ubuntu@$TARGET_HOST "
     done
     
     # Check if green environment is healthy
-    if ! curl -f http://localhost:8084/actuator/health > /dev/null 2>&1; then
+    if ! curl -f http://localhost:8984/actuator/health > /dev/null 2>&1; then
         echo 'ERROR: Green environment failed to start'
         docker-compose -f docker-compose.blue-green.yml logs app-green
         exit 1
@@ -174,7 +174,7 @@ ssh -i /tmp/blue_green_key.pem -o StrictHostKeyChecking=no ubuntu@$TARGET_HOST "
     # Create nginx configuration for blue-green switching
     sudo tee /etc/nginx/sites-available/app-proxy > /dev/null << 'NGINX_EOF'
 upstream app_backend {
-    server 127.0.0.1:8084;  # Green environment
+    server 127.0.0.1:8984;  # Green environment
 }
 
 server {
@@ -220,7 +220,7 @@ if [ "$HEALTH_STATUS" != "200" ]; then
         # Switch back to blue
         sudo tee /etc/nginx/sites-available/app-proxy > /dev/null << 'NGINX_EOF'
 upstream app_backend {
-    server 127.0.0.1:8083;  # Blue environment
+    server 127.0.0.1:8983;  # Blue environment
 }
 
 server {

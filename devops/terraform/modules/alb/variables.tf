@@ -35,7 +35,7 @@ variable "enable_deletion_protection" {
 variable "target_port" {
   description = "Port on which targets receive traffic"
   type        = number
-  default     = 8080
+  default     = 8989
 }
 
 variable "listener_port" {

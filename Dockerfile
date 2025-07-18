@@ -1,5 +1,3 @@
-# Multi-stage Dockerfile for Spring Boot application
-
 # Stage 1: Build stage
 FROM maven:3.9-eclipse-temurin-17 AS build
 
@@ -38,11 +36,11 @@ RUN chown -R appuser:appuser /app
 USER appuser
 
 # Expose port
-EXPOSE 8080
+EXPOSE 8989
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
-  CMD curl -f http://localhost:8080/api/v1/health || exit 1
+  CMD curl -f http://localhost:8989/api/v1/health || exit 1
 
 # Optional: JVM tuning for containerized environment
 ENV JAVA_OPTS="-Xmx512m -Xms256m"
