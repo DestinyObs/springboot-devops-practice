@@ -1,23 +1,42 @@
 #!/bin/bash
 
-# Deployment script for Spring Boot User Registration Service
-# Usage: ./deploy.sh <environment> <docker_image>
+# Production Deployment Script
+# Usage: ./deploy.sh <image_tag>
 
 set -e
 
-ENVIRONMENT=$1
-DOCKER_IMAGE=$2
+IMAGE_TAG=$1
+DOCKER_REGISTRY="destinyobs"
+IMAGE_NAME="user-registration-microservice"
 
-if [ -z "$ENVIRONMENT" ] || [ -z "$DOCKER_IMAGE" ]; then
-    echo "Usage: $0 <environment> <docker_image>"
+if [ -z "$IMAGE_TAG" ]; then
+    echo "Usage: $0 <image_tag>"
     exit 1
 fi
 
-echo "Deploying to $ENVIRONMENT environment..."
-echo "Docker image: $DOCKER_IMAGE"
+echo "Deploying ${DOCKER_REGISTRY}/${IMAGE_NAME}:${IMAGE_TAG} to production..."
 
-# Environment-specific configuration
-case $ENVIRONMENT in
+# Pull the latest image
+docker pull ${DOCKER_REGISTRY}/${IMAGE_NAME}:${IMAGE_TAG}
+
+# Stop existing containers
+docker-compose -f docker-compose.prod.yml down || true
+
+# Set the image tag and deploy
+export APP_IMAGE=${DOCKER_REGISTRY}/${IMAGE_NAME}:${IMAGE_TAG}
+docker-compose -f docker-compose.prod.yml up -d
+
+# Wait for health check
+echo "Waiting for application to start..."
+sleep 60
+
+# Verify deployment
+if curl -f http://localhost:8080/api/v1/health; then
+    echo "Deployment successful!"
+else
+    echo "Deployment failed - health check failed"
+    exit 1
+fi
     "dev")
         APP_PORT=8080
         MYSQL_DB="userdb_dev"

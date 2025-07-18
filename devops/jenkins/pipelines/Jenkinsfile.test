@@ -2,22 +2,87 @@ pipeline {
     agent any
     
     environment {
-        DOCKER_HUB_CREDENTIALS = credentials('docker-hub-credentials')
-        DOCKER_IMAGE = 'your-dockerhub-username/spring-boot-user-registration'
-        AWS_REGION = 'us-east-1'
-        ENV_NAME = 'test'
-    }
-    
-    tools {
-        maven 'Maven-3.9.6'
-        jdk 'OpenJDK-17'
+        DOCKER_REGISTRY = 'destinyobs'
+        IMAGE_NAME = 'user-registration-microservice'
+        AWS_REGION = 'us-east-2'
     }
     
     stages {
-        stage('Checkout') {
+        stage('Pull Latest Dev Image') {
             steps {
-                checkout scm
+                sh """
+                    docker pull ${DOCKER_REGISTRY}/${IMAGE_NAME}:dev-latest
+                    docker tag ${DOCKER_REGISTRY}/${IMAGE_NAME}:dev-latest ${DOCKER_REGISTRY}/${IMAGE_NAME}:test-${BUILD_NUMBER}
+                """
+            }
+        }
+        
+        stage('Deploy to Test Instance') {
+            steps {
                 script {
+                    def testInstanceId = sh(
+                        script: "cd devops/terraform/environments/test && terraform output -raw instance_ids | head -n1",
+                        returnStdout: true
+                    ).trim()
+                    
+                    sh """
+                        aws ssm send-command \
+                            --instance-ids ${testInstanceId} \
+                            --document-name "AWS-RunShellScript" \
+                            --parameters 'commands=[
+                                "sudo docker pull ${DOCKER_REGISTRY}/${IMAGE_NAME}:test-${BUILD_NUMBER}",
+                                "sudo docker stop user-registration-app || true",
+                                "sudo docker rm user-registration-app || true",
+                                "sudo docker run -d --name user-registration-app -p 8080:8080 \
+                                    -e SPRING_PROFILES_ACTIVE=test \
+                                    -e SPRING_DATASOURCE_URL=jdbc:mysql://localhost:3306/user_registration_test \
+                                    -e SPRING_DATASOURCE_USERNAME=app_user \
+                                    -e SPRING_DATASOURCE_PASSWORD=app_password \
+                                    ${DOCKER_REGISTRY}/${IMAGE_NAME}:test-${BUILD_NUMBER}"
+                            ]' \
+                            --region ${AWS_REGION}
+                    """
+                }
+            }
+        }
+        
+        stage('Integration Tests') {
+            steps {
+                script {
+                    def testInstanceIp = sh(
+                        script: "cd devops/terraform/environments/test && terraform output -raw instance_public_ips | head -n1",
+                        returnStdout: true
+                    ).trim()
+                    
+                    retry(10) {
+                        sleep 30
+                        sh "curl -f http://${testInstanceIp}:8080/api/v1/health"
+                    }
+                    
+                    // Run integration tests
+                    sh "mvn test -Dtest.profile=integration -Dtest.host=${testInstanceIp}"
+                }
+            }
+        }
+        
+        stage('Tag for Production') {
+            steps {
+                sh """
+                    docker tag ${DOCKER_REGISTRY}/${IMAGE_NAME}:test-${BUILD_NUMBER} ${DOCKER_REGISTRY}/${IMAGE_NAME}:prod-candidate-${BUILD_NUMBER}
+                    docker push ${DOCKER_REGISTRY}/${IMAGE_NAME}:prod-candidate-${BUILD_NUMBER}
+                """
+            }
+        }
+    }
+    
+    post {
+        success {
+            build job: 'user-registration-prod', 
+                parameters: [string(name: 'IMAGE_TAG', value: "prod-candidate-${BUILD_NUMBER}")],
+                wait: false
+        }
+    }
+}
                     env.BUILD_NUMBER = BUILD_NUMBER
                     env.GIT_COMMIT_SHORT = sh(
                         script: 'git rev-parse --short HEAD',

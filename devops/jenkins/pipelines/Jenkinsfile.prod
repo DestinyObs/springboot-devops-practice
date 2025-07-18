@@ -1,23 +1,109 @@
 pipeline {
     agent any
     
-    environment {
-        DOCKER_HUB_CREDENTIALS = credentials('docker-hub-credentials')
-        DOCKER_IMAGE = 'your-dockerhub-username/spring-boot-user-registration'
-        AWS_REGION = 'us-east-1'
-        ENV_NAME = 'prod'
+    parameters {
+        string(name: 'IMAGE_TAG', defaultValue: '', description: 'Docker image tag to deploy')
     }
     
-    tools {
-        maven 'Maven-3.9.6'
-        jdk 'OpenJDK-17'
+    environment {
+        DOCKER_REGISTRY = 'destinyobs'
+        IMAGE_NAME = 'user-registration-microservice'
+        AWS_REGION = 'us-east-2'
     }
     
     stages {
-        stage('Checkout') {
+        stage('Approval') {
             steps {
-                checkout scm
+                input message: 'Deploy to production?', ok: 'Deploy',
+                      parameters: [choice(name: 'DEPLOY_CONFIRM', choices: ['Deploy', 'Abort'], description: 'Confirm deployment')]
+            }
+        }
+        
+        stage('Deploy to Production') {
+            steps {
                 script {
+                    def prodInstanceIds = sh(
+                        script: "cd devops/terraform/environments/prod && terraform output -json instance_ids | jq -r '.[]'",
+                        returnStdout: true
+                    ).trim().split('\n')
+                    
+                    prodInstanceIds.each { instanceId ->
+                        sh """
+                            aws ssm send-command \
+                                --instance-ids ${instanceId} \
+                                --document-name "AWS-RunShellScript" \
+                                --parameters 'commands=[
+                                    "sudo docker pull ${DOCKER_REGISTRY}/${IMAGE_NAME}:${params.IMAGE_TAG}",
+                                    "cd /home/ubuntu",
+                                    "sudo docker-compose down || true",
+                                    "export APP_IMAGE=${DOCKER_REGISTRY}/${IMAGE_NAME}:${params.IMAGE_TAG}",
+                                    "sudo docker-compose -f docker-compose.prod.yml up -d"
+                                ]' \
+                                --region ${AWS_REGION}
+                        """
+                        
+                        sleep 30
+                    }
+                }
+            }
+        }
+        
+        stage('Health Check') {
+            steps {
+                script {
+                    def albUrl = sh(
+                        script: "cd devops/terraform/environments/prod && terraform output -raw load_balancer_dns_name",
+                        returnStdout: true
+                    ).trim()
+                    
+                    if (albUrl && albUrl != "null") {
+                        retry(15) {
+                            sleep 60
+                            sh "curl -f http://${albUrl}/api/v1/health"
+                        }
+                    } else {
+                        echo "ALB not enabled, checking instances directly via SSM"
+                        def prodInstanceIds = sh(
+                            script: "cd devops/terraform/environments/prod && terraform output -json instance_ids | jq -r '.[]'",
+                            returnStdout: true
+                        ).trim().split('\n')
+                        
+                        prodInstanceIds.each { instanceId ->
+                            sh """
+                                aws ssm send-command \
+                                    --instance-ids ${instanceId} \
+                                    --document-name "AWS-RunShellScript" \
+                                    --parameters 'commands=["curl -f http://localhost:8080/api/v1/health"]' \
+                                    --region ${AWS_REGION}
+                            """
+                        }
+                    }
+                }
+            }
+        }
+        
+        stage('Tag Production Release') {
+            steps {
+                sh """
+                    docker pull ${DOCKER_REGISTRY}/${IMAGE_NAME}:${params.IMAGE_TAG}
+                    docker tag ${DOCKER_REGISTRY}/${IMAGE_NAME}:${params.IMAGE_TAG} ${DOCKER_REGISTRY}/${IMAGE_NAME}:prod-${BUILD_NUMBER}
+                    docker tag ${DOCKER_REGISTRY}/${IMAGE_NAME}:${params.IMAGE_TAG} ${DOCKER_REGISTRY}/${IMAGE_NAME}:latest
+                    docker push ${DOCKER_REGISTRY}/${IMAGE_NAME}:prod-${BUILD_NUMBER}
+                    docker push ${DOCKER_REGISTRY}/${IMAGE_NAME}:latest
+                """
+            }
+        }
+    }
+    
+    post {
+        failure {
+            script {
+                // Rollback on failure
+                echo "Deployment failed, consider rollback procedures"
+            }
+        }
+    }
+}
                     env.BUILD_NUMBER = BUILD_NUMBER
                     env.GIT_COMMIT_SHORT = sh(
                         script: 'git rev-parse --short HEAD',

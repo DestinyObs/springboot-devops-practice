@@ -17,6 +17,18 @@
     state: present
     update_cache: yes
 
+- name: Stop Jenkins service before configuration
+  systemd:
+    name: jenkins
+    state: stopped
+
+- name: Configure Jenkins port
+  lineinfile:
+    path: /etc/default/jenkins
+    regexp: '^HTTP_PORT='
+    line: 'HTTP_PORT=8081'
+    backup: yes
+
 - name: Start and enable Jenkins service
   systemd:
     name: jenkins
@@ -31,10 +43,20 @@
 
 - name: Wait for Jenkins to start
   wait_for:
-    port: 8080
+    port: 8081
     host: localhost
-    delay: 30
-    timeout: 300
+    delay: 10
+    timeout: 180
+
+- name: Verify Jenkins is responding
+  uri:
+    url: http://localhost:8081/login
+    status_code: 200
+    timeout: 10
+  register: jenkins_response
+  until: jenkins_response.status == 200
+  retries: 6
+  delay: 10
 
 - name: Get Jenkins initial admin password
   command: cat /var/lib/jenkins/secrets/initialAdminPassword
@@ -46,7 +68,7 @@
     msg: |
       Jenkins installed successfully!
       
-      Access Jenkins at: http://{{ ansible_default_ipv4.address }}:8080
+      Access Jenkins at: http://{{ ansible_default_ipv4.address }}:8081
       Initial admin password: {{ jenkins_initial_password.stdout }}
       
       Jenkins user has been added to docker group for container builds.
