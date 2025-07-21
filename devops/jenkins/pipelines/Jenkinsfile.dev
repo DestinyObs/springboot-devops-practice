@@ -13,7 +13,7 @@ pipeline {
             steps {
                 git credentialsId: 'github-credentials', 
                     branch: 'main', 
-                    url: 'https://github.com/destinyobs/springboot-devops-practice.git'
+                    url: 'https://github.com/DestinyObs/springboot-devops-practice.git'
             }
         }
         
@@ -22,6 +22,7 @@ pipeline {
                 sh 'mvn clean compile'
             }
         }
+        
         
         stage('Test') {
             steps {
@@ -79,103 +80,9 @@ pipeline {
     post {
         success {
             build job: 'user-registration-test', wait: false
-        }
+        } 
         cleanup {
             sh 'docker system prune -f'
-        }
-    }
-}
-                    env.BUILD_NUMBER = BUILD_NUMBER
-                    env.GIT_COMMIT_SHORT = sh(
-                        script: 'git rev-parse --short HEAD',
-                        returnStdout: true
-                    ).trim()
-                }
-            }
-        }
-        
-        stage('Build') {
-            steps {
-                sh 'mvn clean compile'
-            }
-        }
-        
-        stage('Test') {
-            steps {
-                sh 'mvn test'
-            }
-            post {
-                always {
-                    publishTestResults testResultsPattern: 'target/surefire-reports/*.xml'
-                    publishCoverage adapters: [jacocoAdapter('target/site/jacoco/jacoco.xml')]
-                }
-            }
-        }
-        
-        stage('Package') {
-            steps {
-                sh 'mvn package -DskipTests'
-            }
-        }
-        
-        stage('Build Docker Image') {
-            steps {
-                script {
-                    def imageTag = "${env.BUILD_NUMBER}-${env.GIT_COMMIT_SHORT}"
-                    env.IMAGE_TAG = imageTag
-                    
-                    sh """
-                        docker build -t ${DOCKER_IMAGE}:${imageTag} .
-                        docker tag ${DOCKER_IMAGE}:${imageTag} ${DOCKER_IMAGE}:latest-dev
-                    """
-                }
-            }
-        }
-        
-        stage('Push to Docker Hub') {
-            steps {
-                script {
-                    sh """
-                        echo \$DOCKER_HUB_CREDENTIALS_PSW | docker login -u \$DOCKER_HUB_CREDENTIALS_USR --password-stdin
-                        docker push ${DOCKER_IMAGE}:${env.IMAGE_TAG}
-                        docker push ${DOCKER_IMAGE}:latest-dev
-                    """
-                }
-            }
-        }
-        
-        stage('Deploy to Dev') {
-            steps {
-                script {
-                    sh """
-                        chmod +x devops/jenkins/scripts/deploy.sh
-                        ./devops/jenkins/scripts/deploy.sh ${ENV_NAME} ${DOCKER_IMAGE}:${env.IMAGE_TAG}
-                    """
-                }
-            }
-        }
-        
-        stage('Health Check') {
-            steps {
-                script {
-                    sh """
-                        chmod +x devops/jenkins/scripts/health-check.sh
-                        ./devops/jenkins/scripts/health-check.sh ${ENV_NAME}
-                    """
-                }
-            }
-        }
-    }
-    
-    post {
-        always {
-            cleanWs()
-        }
-        success {
-            echo 'Dev deployment successful!'
-        }
-        failure {
-            echo 'Pipeline failed!'
         }
     }
 }

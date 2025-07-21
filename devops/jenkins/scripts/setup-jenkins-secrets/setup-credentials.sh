@@ -10,18 +10,27 @@ if [ ! -f "$ENV_FILE" ]; then
     exit 1
 fi
 
-# Load environment variables
-set -a  # automatically export all variables
-source "$ENV_FILE"
-set +a
+# Load environment variables with line ending cleanup
+while IFS='=' read -r key value; do
+    # Skip empty lines and comments
+    [[ $key =~ ^#.*$ ]] && continue
+    [[ -z "$key" ]] && continue
+    
+    # Clean up key and value from any carriage returns
+    key=$(echo "$key" | tr -d '\r\n')
+    value=$(echo "$value" | tr -d '\r')
+    
+    # Export the variable
+    export "$key=$value"
+done < "$ENV_FILE"
 
 echo "Loaded configuration from $ENV_FILE"
-
+ 
 # Create a temporary cookie jar
 COOKIE_JAR=$(mktemp)
 trap "rm -f $COOKIE_JAR" EXIT
 
-# Function to make authenticated requests
+# Function to mak e authenticated requests
 jenkins_request() {
     local method="$1"
     local endpoint="$2"
@@ -61,6 +70,13 @@ echo "GitHub credentials created."
 
 # Create SSH Key credentials
 echo "Creating SSH key credentials..."
+echo "SSH Key Path: '$SSH_KEY_PATH'"
+if [ ! -f "$SSH_KEY_PATH" ]; then
+    echo "Error: SSH key file not found at $SSH_KEY_PATH"
+    echo "Available files in directory:"
+    ls -la "$(dirname "$SSH_KEY_PATH")"
+    exit 1
+fi
 SSH_KEY_CONTENT=$(cat "$SSH_KEY_PATH" | sed 's/$/\\n/' | tr -d '\n' | sed 's/\\n$//')
 jenkins_request "POST" "/credentials/store/system/domain/_/createCredentials" \
     "json={\"\":\"0\",\"credentials\":{\"scope\":\"GLOBAL\",\"id\":\"aws-ssh-key\",\"description\":\"AWS EC2 SSH Access\",\"username\":\"ubuntu\",\"privateKeySource\":{\"privateKey\":\"$SSH_KEY_CONTENT\",\"\$class\":\"com.cloudbees.jenkins.plugins.sshcredentials.impl.BasicSSHUserPrivateKey\$DirectEntryPrivateKeySource\"},\"\$class\":\"com.cloudbees.jenkins.plugins.sshcredentials.impl.BasicSSHUserPrivateKey\"}}"
