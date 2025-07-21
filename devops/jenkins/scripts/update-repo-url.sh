@@ -15,9 +15,10 @@ echo "====================================="
 JENKINS_URL="http://${JENKINS_HOST}:${JENKINS_PORT}"
 JOB_NAME="user-registration-dev"
 
-# Get Jenkins crumb for CSRF protection
+# Get Jenkins crumb for CSRF protection using cookie jar
 echo "Getting Jenkins CSRF token..."
-CRUMB=$(curl -s -u "${JENKINS_USER}:${JENKINS_PASSWORD}" \
+COOKIE_JAR=$(mktemp)
+CRUMB=$(curl -c "$COOKIE_JAR" -s -u "${JENKINS_USER}:${JENKINS_PASSWORD}" \
     "${JENKINS_URL}/crumbIssuer/api/json" | \
     jq -r '.crumb' 2>/dev/null || echo "")
 
@@ -29,11 +30,12 @@ fi
 
 # Get current job configuration
 echo "Getting current job configuration..."
-CURRENT_CONFIG=$(curl -s -u "${JENKINS_USER}:${JENKINS_PASSWORD}" \
+CURRENT_CONFIG=$(curl -b "$COOKIE_JAR" -s -u "${JENKINS_USER}:${JENKINS_PASSWORD}" \
     "${JENKINS_URL}/job/${JOB_NAME}/config.xml")
 
 if [ $? -ne 0 ]; then
     echo "❌ Failed to get job configuration"
+    rm -f "$COOKIE_JAR"
     exit 1
 fi
 
@@ -42,7 +44,7 @@ echo "Updating repository URL to: https://github.com/DestinyObs/springboot-devop
 UPDATED_CONFIG=$(echo "$CURRENT_CONFIG" | sed 's|https://github.com/destinyobs/springboot-devops-practice.git|https://github.com/DestinyObs/springboot-devops-practice.git|g')
 
 # Save updated configuration
-curl -X POST -u "${JENKINS_USER}:${JENKINS_PASSWORD}" \
+curl -X POST -b "$COOKIE_JAR" -u "${JENKINS_USER}:${JENKINS_PASSWORD}" \
     -H "Content-Type: application/xml" \
     -H "$CRUMB_HEADER" \
     --data-binary "$UPDATED_CONFIG" \
@@ -53,8 +55,12 @@ if [ $? -eq 0 ]; then
     echo "New repository URL: https://github.com/DestinyObs/springboot-devops-practice.git"
 else
     echo "❌ Failed to update job configuration"
+    rm -f "$COOKIE_JAR"
     exit 1
 fi
+
+# Clean up cookie jar
+rm -f "$COOKIE_JAR"
 
 echo ""
 echo "Job updated! You can now trigger a new build."

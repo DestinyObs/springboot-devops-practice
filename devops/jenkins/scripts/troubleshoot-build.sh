@@ -8,9 +8,6 @@ source ./setup-jenkins-secrets/secrets.env
 # Convert CRLF to LF if running on Windows
 sed -i 's/\r$//' ./setup-jenkins-secrets/secrets.env
 
-echo "Jenkins Build Troubleshooting..."
-echo "================================"
-
 # Jenkins server details
 JENKINS_URL="http://${JENKINS_HOST}:${JENKINS_PORT}"
 JOB_NAME="user-registration-dev"

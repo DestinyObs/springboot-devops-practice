@@ -14,9 +14,10 @@ echo "Setting up Jenkins webhook integration..."
 JENKINS_URL="http://${JENKINS_HOST}:${JENKINS_PORT}"
 JOB_NAME="user-registration-dev"
 
-# Get Jenkins crumb for CSRF protection
+# Get Jenkins crumb for CSRF protection using cookie jar
 echo "Getting Jenkins CSRF token..."
-CRUMB=$(curl -s -u "${JENKINS_USER}:${JENKINS_PASSWORD}" \
+COOKIE_JAR=$(mktemp)
+CRUMB=$(curl -c "$COOKIE_JAR" -s -u "${JENKINS_USER}:${JENKINS_PASSWORD}" \
     "${JENKINS_URL}/crumbIssuer/api/json" | \
     jq -r '.crumb' 2>/dev/null || echo "")
 
@@ -71,6 +72,10 @@ cat > job_config_webhook.xml << 'EOF'
       <submoduleCfg class="empty-list"/>
       <extensions/>
     </scm>
+
+
+
+    
     <scriptPath>devops/jenkins/pipelines/Jenkinsfile.dev</scriptPath>
     <lightweight>true</lightweight>
   </definition>
@@ -81,7 +86,7 @@ EOF
 
 # Update the job configuration
 echo "Updating job configuration with webhook trigger..."
-curl -X POST -u "${JENKINS_USER}:${JENKINS_PASSWORD}" \
+curl -X POST -b "$COOKIE_JAR" -u "${JENKINS_USER}:${JENKINS_PASSWORD}" \
     -H "Content-Type: application/xml" \
     -H "$CRUMB_HEADER" \
     --data-binary @job_config_webhook.xml \
@@ -90,12 +95,13 @@ curl -X POST -u "${JENKINS_USER}:${JENKINS_PASSWORD}" \
 if [ $? -eq 0 ]; then
     echo "✅ Job configuration updated successfully!"
 else
-    echo "❌ Failed to update job configuration"
+    echo "Failed to update job configuration"
+    rm -f "$COOKIE_JAR"
     exit 1
 fi
 
 # Clean up
-rm -f job_config_webhook.xml
+rm -f job_config_webhook.xml "$COOKIE_JAR"
 
 echo ""
 echo "🔗 Webhook Configuration Complete!"
