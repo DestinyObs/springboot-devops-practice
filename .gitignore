@@ -92,6 +92,16 @@ Thumbs.db
 
 # Terraform variable files with sensitive data
 terraform.tfvars
+terraform.tfvars.json
+*.tfvars
+*.tfvars.json
+!terraform.tfvars.example
+!*.tfvars.example
+
+# Terraform backend config with credentials
+backend.hcl
+backend-*.hcl
+!backend.hcl.example
 
 # Terraform plan files
 *.tfplan
@@ -116,10 +126,64 @@ crash.*.log
 .env.production
 .env.staging
 
-# AWS credentials (if accidentally placed in project)
+# Jenkins secrets and configuration files
+devops/jenkins/scripts/setup-jenkins-secrets/secrets.env
+devops/jenkins/scripts/setup-jenkins-secrets/secrets.env.*
+devops/jenkins/scripts/setup-jenkins-jobs/jobs.env  
+devops/jenkins/scripts/setup-jenkins-jobs/jobs.env.*
+devops/jenkins/scripts/jobs.env
+devops/jenkins/scripts/secrets.env
+
+# Keep only example files for Jenkins
+!devops/jenkins/scripts/setup-jenkins-secrets/secrets.env.example
+!devops/jenkins/scripts/setup-jenkins-jobs/jobs.env.example
+
+# Application secrets and credentials
+src/main/resources/application-local.properties
+src/main/resources/application-secret.properties
+src/main/resources/application-*.properties.local
+
+# All .env files (with exceptions)
+*.env
+*.env.*
+!*.env.example
+!.env.example
+
+# SSH Keys and certificates (Terraform generated)
+*.pem
+*.key
+*.crt
+*.cert
+*.p12
+*.jks
+*-key.pem
+*-cert.pem
+user-registration-*-key.pem
+
+# AWS credentials and config
 .aws/
 credentials
 config
+aws-credentials
+aws-config
+
+# Docker and deployment secrets
+docker-compose.override.yml
+docker-compose.local.yml
+.dockerignore.local
+
+# Database dumps and sensitive data
+*.sql.gz
+*.dump
+*.backup
+database.sql
+db_backup.*
+
+# API keys and tokens
+api-keys.txt
+tokens.txt
+secret-keys.txt
+.secrets
 
 # Temporary files
 *.tmp

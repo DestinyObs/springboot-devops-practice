@@ -33,8 +33,18 @@
   wait_for:
     port: 8080
     host: localhost
-    delay: 30
-    timeout: 300
+    delay: 10
+    timeout: 180
+
+- name: Verify Jenkins is responding
+  uri:
+    url: http://localhost:8080/login
+    status_code: 200
+    timeout: 10
+  register: jenkins_response
+  until: jenkins_response.status == 200
+  retries: 6
+  delay: 10
 
 - name: Get Jenkins initial admin password
   command: cat /var/lib/jenkins/secrets/initialAdminPassword

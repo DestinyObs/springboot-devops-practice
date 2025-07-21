@@ -151,12 +151,6 @@ variable "backup_retention_days" {
   default     = 30
 }
 
-# S3 Configuration for deployments
-variable "s3_bucket_name" {
-  description = "S3 bucket name for storing deployment artifacts"
-  type        = string
-  default     = "springboot-devops-prod-deployments"
-}
 
 # Tags
 variable "tags" {

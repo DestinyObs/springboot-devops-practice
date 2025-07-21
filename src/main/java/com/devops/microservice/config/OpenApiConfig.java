@@ -20,10 +20,10 @@ import java.util.List;
 @Configuration
 public class OpenApiConfig {
 
-    @Value("${server.port:8080}")
+    @Value("${server.port:8989}")
     private String serverPort;
 
-    @Value("${app.swagger.servers:http://localhost:8080}")
+    @Value("${app.swagger.servers:http://localhost:8989}")
     private String swaggerServers;
 
     @Bean

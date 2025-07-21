@@ -39,11 +39,11 @@ services:
       JWT_EXPIRATION: 3600000
       JWT_REFRESH_EXPIRATION: 86400000
     ports:
-      - "8080:8080"
+      - "8989:8989"
     networks:
       - app-network
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8080/api/v1/health"]
+      test: ["CMD", "curl", "-f", "http://localhost:8989/api/v1/health"]
       interval: 30s
       timeout: 10s
       retries: 5

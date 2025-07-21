@@ -2,22 +2,89 @@ pipeline {
     agent any
     
     environment {
+        DOCKER_REGISTRY = 'destinyobs'
+        IMAGE_NAME = 'user-registration-microservice'
+        BUILD_NUMBER = "${env.BUILD_NUMBER}"
         DOCKER_HUB_CREDENTIALS = credentials('docker-hub-credentials')
-        DOCKER_IMAGE = 'destinypbs/spring-boot-user-registration'
-        AWS_REGION = 'us-east-1'
-        ENV_NAME = 'dev'
-    }
-    
-    tools {
-        maven 'Maven-3.9.6'
-        jdk 'OpenJDK-17'
     }
     
     stages {
         stage('Checkout') {
             steps {
-                checkout scm
+                git credentialsId: 'github-credentials', 
+                    branch: 'main', 
+                    url: 'https://github.com/destinyobs/springboot-devops-practice.git'
+            }
+        }
+        
+        stage('Build') {
+            steps {
+                sh 'mvn clean compile'
+            }
+        }
+        
+        stage('Test') {
+            steps {
+                sh 'mvn test'
+                publishTestResults([
+                    testResultsPattern: 'target/surefire-reports/*.xml'
+                ])
+            }
+        }
+        
+        stage('Package') {
+            steps {
+                sh 'mvn package -DskipTests'
+                archiveArtifacts artifacts: 'target/*.jar'
+            }
+        }
+        
+        stage('Docker Build & Push') {
+            steps {
                 script {
+                    sh """
+                        echo \$DOCKER_HUB_CREDENTIALS_PSW | docker login -u \$DOCKER_HUB_CREDENTIALS_USR --password-stdin
+                        docker build -t ${DOCKER_REGISTRY}/${IMAGE_NAME}:${BUILD_NUMBER} .
+                        docker tag ${DOCKER_REGISTRY}/${IMAGE_NAME}:${BUILD_NUMBER} ${DOCKER_REGISTRY}/${IMAGE_NAME}:dev-latest
+                        docker push ${DOCKER_REGISTRY}/${IMAGE_NAME}:${BUILD_NUMBER}
+                        docker push ${DOCKER_REGISTRY}/${IMAGE_NAME}:dev-latest
+                    """
+                }
+            }
+        }
+        
+        stage('Deploy to Dev') {
+            steps {
+                sh """
+                    docker-compose down || true
+                    export IMAGE_TAG=${BUILD_NUMBER}
+                    sed -i 's|build: .|image: ${DOCKER_REGISTRY}/${IMAGE_NAME}:${BUILD_NUMBER}|' docker-compose.yml
+                    docker-compose up -d
+                """
+            }
+        }
+        
+        stage('Health Check') {
+            steps {
+                script {
+                    retry(10) {
+                        sleep 30
+                        sh 'curl -f http://localhost:8989/api/v1/health'
+                    }
+                }
+            }
+        }
+    }
+    
+    post {
+        success {
+            build job: 'user-registration-test', wait: false
+        }
+        cleanup {
+            sh 'docker system prune -f'
+        }
+    }
+}
                     env.BUILD_NUMBER = BUILD_NUMBER
                     env.GIT_COMMIT_SHORT = sh(
                         script: 'git rev-parse --short HEAD',

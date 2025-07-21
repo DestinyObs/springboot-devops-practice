@@ -103,7 +103,7 @@ module "alb" {
   subnet_ids         = module.vpc.public_subnet_ids
   security_group_ids = [module.security.alb_security_group_id]
   
-  target_port                     = 8080
+  target_port                     = 8989
   listener_port                   = 80
   health_check_path               = "/actuator/health"
   enable_deletion_protection      = var.enable_deletion_protection
@@ -119,7 +119,7 @@ resource "aws_lb_target_group_attachment" "prod_attachment" {
   count            = var.instance_count
   target_group_arn = module.alb.target_group_arn
   target_id        = module.ec2.instance_ids[count.index]
-  port             = 8080
+  port             = 8989
   depends_on       = [module.ec2, module.alb]
 }
 
@@ -172,29 +172,6 @@ resource "aws_iam_role_policy_attachment" "ssm_managed_instance" {
   policy_arn = "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"
 }
 
-# Add S3 access policy for deployment artifacts
-resource "aws_iam_role_policy" "s3_deployment_access" {
-  name = "${var.project_name}-${var.environment}-s3-deployment-access"
-  role = aws_iam_role.ssm_role.id
-
-  policy = jsonencode({
-    Version = "2012-10-17"
-    Statement = [
-      {
-        Effect = "Allow"
-        Action = [
-          "s3:GetObject",
-          "s3:ListBucket"
-        ]
-        Resource = [
-          aws_s3_bucket.deployments.arn,
-          "${aws_s3_bucket.deployments.arn}/*"
-        ]
-      }
-    ]
-  })
-}
-
 # Instance profile for SSM
 resource "aws_iam_instance_profile" "ssm_profile" {
   name = "${var.project_name}-${var.environment}-ssm-profile"
@@ -207,103 +184,6 @@ resource "aws_iam_instance_profile" "ssm_profile" {
   }
 }
 
-# Generate Ansible inventory dynamically for manual use
-resource "local_file" "ansible_inventory" {
-  content = templatefile("../../../ansible/inventory/template.ini", {
-    environment  = var.environment
-    instance_ips = module.ec2.instance_public_ips
-  })
-  filename = "../../../ansible/inventory/${var.environment}.ini"
-  depends_on = [module.ec2]
-}
 
-# Generate Ansible variables file for manual use
-resource "local_file" "ansible_vars" {
-  content = templatefile("../../../ansible/group_vars/template.yml", {
-    environment    = var.environment
-    project_name   = var.project_name
-    instance_type  = var.instance_type
-    aws_region     = var.aws_region
-    instance_count = var.instance_count
-    instance_ips   = module.ec2.instance_public_ips
-    enable_alb     = true
-    alb_dns_name   = module.alb.load_balancer_dns_name
-  })
-  filename = "../../../ansible/group_vars/${var.environment}.yml"
-  depends_on = [module.ec2]
-}
 
-# Copy Ansible files to instances via SSM (simplified)
-resource "null_resource" "copy_ansible_files" {
-  depends_on = [
-    module.ec2,
-    local_file.ansible_inventory,
-    local_file.ansible_vars
-  ]
 
-  # Install Ansible and prepare for manual deployment
-  count = var.instance_count
-
-  provisioner "local-exec" {
-    command = "aws ssm send-command --instance-ids ${module.ec2.instance_ids[count.index]} --document-name 'AWS-RunShellScript' --parameters 'commands=[\"sudo apt update\",\"sudo apt install -y ansible git awscli\",\"mkdir -p /home/ubuntu/ansible\",\"echo Ansible installed successfully\"]'"
-  }
-
-  triggers = {
-    instance_id = module.ec2.instance_ids[count.index]
-  }
-}
-
-# Manual deployment instructions
-resource "local_file" "deployment_instructions" {
-  content = <<-EOT
-# Production Manual Deployment
-
-## Quick Start:
-
-1. **Connect to any instance:**
-   aws ssm start-session --target ${join(" or ", module.ec2.instance_ids)}
-
-2. **Run Ansible playbook:**
-   cd /home/ubuntu/ansible
-   ansible-playbook -i inventory/${var.environment}.ini playbooks/site.yml --connection=local
-
-## Instance Information:
-- Environment: ${var.environment}
-- Instances: ${join(", ", module.ec2.instance_ids)}
-- ALB URL: https://${module.alb.load_balancer_dns_name}
-
-## Ansible files are already on each instance at: /home/ubuntu/ansible
-
-EOT
-  filename = "deployment-instructions-${var.environment}.md"
-  depends_on = [module.ec2, module.alb, null_resource.copy_ansible_files]
-}
-
-# S3 bucket for deployment artifacts
-resource "aws_s3_bucket" "deployments" {
-  bucket = var.s3_bucket_name
-
-  tags = {
-    Name        = "${var.project_name}-${var.environment}-deployments"
-    Environment = var.environment
-    Project     = var.project_name
-    Purpose     = "Deployment artifacts storage"
-  }
-}
-
-resource "aws_s3_bucket_versioning" "deployments" {
-  bucket = aws_s3_bucket.deployments.id
-  versioning_configuration {
-    status = "Enabled"
-  }
-}
-
-resource "aws_s3_bucket_server_side_encryption_configuration" "deployments" {
-  bucket = aws_s3_bucket.deployments.id
-
-  rule {
-    apply_server_side_encryption_by_default {
-      sse_algorithm = "AES256"
-    }
-  }
-}

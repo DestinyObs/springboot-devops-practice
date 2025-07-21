@@ -51,7 +51,7 @@ A Spring Boot REST API for user registration and authentication with JWT tokens.
 ### API Documentation
 
 Once the application is running, access Swagger UI at:
-`http://localhost:8080/swagger-ui.html`
+`http://localhost:8989/swagger-ui.html`
 
 ### Default Users
 

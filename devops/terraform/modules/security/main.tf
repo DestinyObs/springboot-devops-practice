@@ -44,20 +44,58 @@ resource "aws_security_group" "app" {
   name_prefix = "${var.project_name}-${var.environment}-app-"
   vpc_id      = var.vpc_id
 
+  # Spring Boot Application
   ingress {
     description     = "HTTP from ALB"
-    from_port       = 8080
-    to_port         = 8080
+    from_port       = 8989
+    to_port         = 8989
     protocol        = "tcp"
     security_groups = [aws_security_group.alb.id]
   }
 
+  # Spring Boot Application - Direct access (for dev/test)
+  ingress {
+    description = "Spring Boot App Direct"
+    from_port   = 8989
+    to_port     = 8989
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  # Jenkins
+  ingress {
+    description = "Jenkins Web UI"
+    from_port   = 8080
+    to_port     = 8080
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  # MySQL Database
+  ingress {
+    description = "MySQL Database"
+    from_port   = 3306
+    to_port     = 3306
+    protocol    = "tcp"
+    cidr_blocks = ["10.0.0.0/16"]
+  }
+
+  # SSH
   ingress {
     description = "SSH"
     from_port   = 22
     to_port     = 22
     protocol    = "tcp"
     cidr_blocks = var.ssh_allowed_cidrs
+  }
+
+  # Docker Daemon (for Jenkins builds)
+  ingress {
+    description = "Docker Daemon"
+    from_port   = 2376
+    to_port     = 2376
+    protocol    = "tcp"
+    cidr_blocks = ["10.0.0.0/16"]
   }
 
   egress {
