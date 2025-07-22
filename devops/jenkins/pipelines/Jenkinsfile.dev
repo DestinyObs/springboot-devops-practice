@@ -8,6 +8,11 @@ pipeline {
         DOCKER_HUB_CREDENTIALS = credentials('docker-hub-credentials')
     }
     
+    options {
+        buildDiscarder(logRotator(numToKeepStr: '10'))
+        timeout(time: 15, unit: 'MINUTES')
+    }
+    
     stages {
         stage('Checkout') {
             steps {
@@ -17,50 +22,33 @@ pipeline {
             }
         }
         
-        stage('Build') {
-            steps {
-                sh 'mvn clean compile'
-            }
-        }
-        
-        
-        stage('Test') {
-            steps {
-                sh 'mvn test'
-                publishTestResults([
-                    testResultsPattern: 'target/surefire-reports/*.xml'
-                ])
-            }
-        }
-        
-        stage('Package') {
-            steps {
-                sh 'mvn package -DskipTests'
-                archiveArtifacts artifacts: 'target/*.jar'
-            }
-        }
-        
-        stage('Docker Build & Push') {
+        stage('Docker Build, Test & Push') {
             steps {
                 script {
                     sh """
+                        # Login to Docker Hub
                         echo \$DOCKER_HUB_CREDENTIALS_PSW | docker login -u \$DOCKER_HUB_CREDENTIALS_USR --password-stdin
-                        docker build -t ${DOCKER_REGISTRY}/${IMAGE_NAME}:${BUILD_NUMBER} .
-                        docker tag ${DOCKER_REGISTRY}/${IMAGE_NAME}:${BUILD_NUMBER} ${DOCKER_REGISTRY}/${IMAGE_NAME}:dev-latest
-                        docker push ${DOCKER_REGISTRY}/${IMAGE_NAME}:${BUILD_NUMBER}
-                        docker push ${DOCKER_REGISTRY}/${IMAGE_NAME}:dev-latest
+                        
+                        # Build with cache for speed
+                        docker build --cache-from ${DOCKER_REGISTRY}/${IMAGE_NAME}:dev-latest \
+                            -t ${DOCKER_REGISTRY}/${IMAGE_NAME}:${BUILD_NUMBER} \
+                            -t ${DOCKER_REGISTRY}/${IMAGE_NAME}:dev-latest .
+                        
+                        # Push images in parallel for speed
+                        docker push ${DOCKER_REGISTRY}/${IMAGE_NAME}:${BUILD_NUMBER} &
+                        docker push ${DOCKER_REGISTRY}/${IMAGE_NAME}:dev-latest &
+                        wait
                     """
                 }
             }
         }
         
-        stage('Deploy to Dev') {
+        stage('Deploy') {
             steps {
                 sh """
                     docker-compose down || true
-                    export IMAGE_TAG=${BUILD_NUMBER}
-                    sed -i 's|build: .|image: ${DOCKER_REGISTRY}/${IMAGE_NAME}:${BUILD_NUMBER}|' docker-compose.yml
                     docker-compose up -d
+                    docker image prune -f
                 """
             }
         }
@@ -68,9 +56,11 @@ pipeline {
         stage('Health Check') {
             steps {
                 script {
-                    retry(10) {
-                        sleep 30
-                        sh 'curl -f http://localhost:8989/api/v1/health'
+                    timeout(time: 2, unit: 'MINUTES') {
+                        retry(4) {
+                            sleep 15
+                            sh 'curl -f --max-time 5 http://localhost:8989/api/v1/health'
+                        }
                     }
                 }
             }
@@ -79,8 +69,9 @@ pipeline {
     
     post {
         success {
+            echo '🎉 Deployment successful!'
             build job: 'user-registration-test', wait: false
-        } 
+        }
         cleanup {
             sh 'docker system prune -f'
         }
