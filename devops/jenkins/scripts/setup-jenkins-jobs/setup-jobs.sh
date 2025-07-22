@@ -190,7 +190,7 @@ PROD_JOB_XML='<?xml version="1.1" encoding="UTF-8"?>
 create_job "$PROD_JOB_NAME" "$PROD_JOB_XML"
 
 echo ""
-echo "🚀 All Jenkins CI/CD Pipeline Jobs Created Successfully!"
+echo "All Jenkins CI/CD Pipeline Jobs Created Successfully!"
 echo ""
 echo "Jobs created:"
 echo "1. user-registration-dev   - Development pipeline (GitHub push trigger)"
