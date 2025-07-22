@@ -3,10 +3,14 @@
 # Jenkins Webhook Configuration Script
 # This script configures GitHub webhook integration for automatic builds
 
-source ../secrets.env
+# Get the directory where the script is located
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+# Source the secrets file
+source "$SCRIPT_DIR/setup-jenkins-secrets/secrets.env"
 
 # Convert CRLF to LF if running on Windows
-sed -i 's/\r$//' ../secrets.env
+sed -i 's/\r$//' "$SCRIPT_DIR/setup-jenkins-secrets/secrets.env"
 
 echo "Setting up Jenkins webhook integration..."
 

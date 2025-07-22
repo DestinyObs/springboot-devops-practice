@@ -1,0 +1,11 @@
+---
+environment: dev
+project_name: user-registration-microservice
+instance_type: t3.micro
+aws_region: us-east-2
+
+instance_count: 1
+instance_ips:
+  - 3.149.238.73
+
+enable_alb: false
