@@ -69,7 +69,7 @@ pipeline {
     
     post {
         success {
-            echo '🎉 Deployment successful!'
+            echo 'Deployment successful!'
             build job: 'user-registration-test', wait: false
         }
         cleanup {
