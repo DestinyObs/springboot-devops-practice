@@ -6,6 +6,8 @@
 # Get the directory where the script is located
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
+#balablu
+
 # Source the secrets file
 source "$SCRIPT_DIR/setup-jenkins-secrets/secrets.env"
 
